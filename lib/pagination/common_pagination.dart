@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter_pagination/pagination/paged_item.dart';
 import 'package:flutter_pagination/pagination/pagination_result.dart';
 
 class CommonPagination<ITEM> {
@@ -19,7 +20,7 @@ class CommonPagination<ITEM> {
 
   Future loadItems(
       bool forceRefresh,
-      Future<MyResponse> Function(int loadFromIndex,bool isInitial) loadFunction,
+      Future<PaginationResult> Function(int loadFromIndex,bool isInitial) loadFunction,
       Function(List<ITEM> initialItems) initialSuccess,
       Function(List<ITEM> loadMoreItems) loadMoreSuccess,
       Function(String initialLoadErrorMessage) initialFailed,
@@ -34,10 +35,11 @@ class CommonPagination<ITEM> {
     _isPerformingRequest = true;
     loading(loadingState);
     PaginationResult result = await loadFunction(_pagedItems.length,isInitial());
-    switch (result.responseState) {
-      case ResponseState.success:
-        if (result.result is List<PagedItem>) {
-          List<ITEM> pagedItems = (result.result as List<PagedItem>).map((e) => e as ITEM).toList();
+    switch (result.runtimeType) {
+      case ResultSuccess:
+        result as ResultSuccess;
+        if (result.items is List<PagedItem>) {
+          List<ITEM> pagedItems = (result.items as List<PagedItem>).map((e) => e as ITEM).toList();
           if(pagedItems.isEmpty) _isLastPage = true;
           success(pagedItems, initialSuccess, loadMoreSuccess,loadingState);
         } else {
@@ -46,11 +48,13 @@ class CommonPagination<ITEM> {
               'Your returned item from load function is not the same type with the generic type');
         }
         break;
-      case ResponseState.error:
-        error(result.message, initialFailed, loadMoreFailed,loadingState);
+      case ResultError:
+        result as ResultError;
+        error(result.errorMessage, initialFailed, loadMoreFailed,loadingState);
         break;
       default:
-        error(result.message, initialFailed, loadMoreFailed,loadingState);
+        result as ResultError;
+        error(result.errorMessage, initialFailed, loadMoreFailed,loadingState);
     }
   }
 
